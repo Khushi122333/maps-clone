@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.css"
+      type="text/css"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <script defer src="js/script.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="shortcut icon" href="images/logo.png" type="image/x-icon" />
+
+    <title>EZZROUTE</title>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <label for="distance">Distance (in kilometers):</label>
+    <input type="number" id="distance" step="0.01" placeholder="Enter distance">
+    <button id="calculateButton">Calculate Toll</button>
+    <p>Toll: <span id="tollValue">0.00 Rs</span></p>
+
+    <script src="https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.js"></script>
+
+    <script>
+      mapboxgl.accessToken = "pk.eyJ1Ijoic29tc3ViaHJhMSIsImEiOiJja2hkbDhuNGcwNnZnMnNuMGkwcjU3d3UwIn0.ZAeP5aPO4JkxNGD7dIEZtw";
+
+      const successLocation = (position) => {
+        setupMap([position.coords.longitude, position.coords.latitude]);
+      };
+
+      const errorLocation = () => {
+        setupMap([0, 0]);
+      };
+
+      const setupMap = (center) => {
+        const map = new mapboxgl.Map({
+          container: "map",
+          style: "mapbox://styles/mapbox/streets-v11",
+          zoom: 16,
+          center,
+        });
+
+        const nav = new mapboxgl.NavigationControl();
+        map.addControl(nav);
+
+        var directions = new MapboxDirections({
+          accessToken: mapboxgl.accessToken,
+        });
+
+        map.addControl(directions, "top-left");
+
+        // Update the distance and toll when directions are updated
+        directions.on("route", (e) => {
+          const route = e.route[0];
+          const distanceElement = document.getElementById("distance");
+          const tollElement = document.getElementById("tollValue");
+
+          if (route) {
+            const distance = (route.distance / 1000).toFixed(2); // Convert to kilometers
+            const toll = (distance * 1.5).toFixed(2); // Calculate toll (1.5 times the distance)
+
+            distanceElement.value = distance;
+            tollElement.textContent = toll + " Rs";
+          }
+        });
+      };
+
+      // Calculate Toll
+      $('#calculateButton').click(function () {
+        // Get the distance from the input field
+        var distance = parseFloat($('#distance').val());
+
+        // Make an API request to calculate the toll
+        $.get('/calculate_toll', { distance: distance }, function (data) {
+          $('#tollValue').text(data.toll.toFixed(2) + ' Rs');
+        }).fail(function (error) {
+          alert('Error calculating toll: ' + error.responseJSON.error);
+        });
+      });
+
+      navigator.geolocation.getCurrentPosition(successLocation, errorLocation, {
+        enableHighAccuracy: true,
+      });
+    </script>
+  </body>
+</html>
+
